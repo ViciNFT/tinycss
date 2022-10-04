@@ -19,7 +19,7 @@ from .parsing import (
     ParseError, remove_whitespace, split_on_comma, strip_whitespace,
     validate_any, validate_value)
 from .token_data import TokenList
-from .tokenizer import tokenize_grouped
+from .tokenizer import tokenize_flat, tokenize_grouped
 
 
 #  stylesheet  : [ CDO | CDC | S | statement ]*;
@@ -69,6 +69,9 @@ class Stylesheet(object):
     def __repr__(self):
         return '<{0.__class__.__name__} {1} rules {2} errors>'.format(
             self, len(self.rules), len(self.errors))
+
+    def as_css(self):
+        return "".join([r.as_css() for r in self.rules])
 
 
 class AtRule(object):
@@ -146,6 +149,16 @@ class RuleSet(object):
         return ('<{0.__class__.__name__} at {0.line}:{0.column} {1}>'
                 .format(self, self.selector.as_css()))
 
+    def add_declaration(self, dec: str):
+        self.declarations.append(
+            CSS21Parser().parse_declaration(
+                tokenize_flat(dec)
+            )
+        )
+
+    def as_css(self) -> str:
+        return self.selector.as_css() + "{" + ";".join(d.as_css() for d in self.declarations) + "}"
+
 
 class Declaration(object):
     """A property declaration.
@@ -184,6 +197,15 @@ class Declaration(object):
         return ('<{0.__class__.__name__} {0.line}:{0.column}'
                 ' {0.name}: {1}{2}>'.format(
                     self, self.value.as_css(), priority))
+
+    def add_value(self, val: str):
+        if self.value:
+            val = "," + val
+
+        self.value += tokenize_flat(val)
+
+    def as_css(self) -> str:
+        return f"{self.name}:{self.value.as_css()}"
 
 
 class PageRule(object):
@@ -293,6 +315,9 @@ class ImportRule(object):
     def __repr__(self):
         return ('<{0.__class__.__name__} {0.line}:{0.column}'
                 ' {0.uri}>'.format(self))
+
+    def as_css(self) -> str:
+        return f"{ImportRule.at_keyword} url('{self.uri}');"
 
 
 def _remove_at_charset(tokens):
