@@ -10,3 +10,8 @@
 /MANIFEST
 /docs/_build
 /env
+
+
+# Unit test reports
+**/junit-*.xml
+**/junit-*.html
